@@ -1,0 +1,440 @@
+{
+  "info": {
+    "_postman_id": "f71cd76e-c0e5-4b47-ae3a-f2d6288d8a01",
+    "name": "Finance Data Processing Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Structured flow for testing health, RBAC, users, records, and dashboard APIs."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "adminUserId", "value": "1" },
+    { "key": "analystUserId", "value": "2" },
+    { "key": "viewerUserId", "value": "3" },
+    { "key": "currentUserId", "value": "1" },
+    { "key": "createdRecordId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/health", "host": ["{{baseUrl}}"], "path": ["api", "health"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Auth and RBAC",
+      "item": [
+        {
+          "name": "Records Without Header -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/records", "host": ["{{baseUrl}}"], "path": ["api", "records"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Viewer Create Record -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-User-Id", "value": "{{viewerUserId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 44.50,\n  \"type\": \"EXPENSE\",\n  \"category\": \"BlockedTry\",\n  \"date\": \"2026-04-05\",\n  \"notes\": \"viewer should not create\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/records", "host": ["{{baseUrl}}"], "path": ["api", "records"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Users",
+      "item": [
+        {
+          "name": "Get Me (Current User)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-User-Id", "value": "{{currentUserId}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/users/me", "host": ["{{baseUrl}}"], "path": ["api", "users", "me"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-User-Id", "value": "{{adminUserId}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api", "users"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is array', function () { pm.expect(Array.isArray(pm.response.json())).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Records CRUD and Validation",
+      "item": [
+        {
+          "name": "Admin Create Record",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-User-Id", "value": "{{adminUserId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 125.75,\n  \"type\": \"EXPENSE\",\n  \"category\": \"PostmanFlow\",\n  \"date\": \"2026-04-05\",\n  \"notes\": \"created from postman flow\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/records", "host": ["{{baseUrl}}"], "path": ["api", "records"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', function () { pm.response.to.have.status(201); });",
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('createdRecordId', json.id);",
+                  "pm.test('createdRecordId stored', function () { pm.expect(json.id).to.exist; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Records with Filters",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-User-Id", "value": "{{viewerUserId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/records?page=0&size=10&type=EXPENSE&category=PostmanFlow",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "records"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" },
+                { "key": "type", "value": "EXPENSE" },
+                { "key": "category", "value": "PostmanFlow" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Has items array', function () { pm.expect(pm.response.json().items).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Created Record",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "X-User-Id", "value": "{{adminUserId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"updated from postman flow\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/records/{{createdRecordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "records", "{{createdRecordId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation Check Invalid Amount -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-User-Id", "value": "{{adminUserId}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 0,\n  \"type\": \"EXPENSE\",\n  \"category\": \"Invalid\",\n  \"date\": \"2026-04-05\",\n  \"notes\": \"invalid\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/records", "host": ["{{baseUrl}}"], "path": ["api", "records"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Created Record",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "X-User-Id", "value": "{{adminUserId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/records/{{createdRecordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "records", "{{createdRecordId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fetch Deleted Record -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-User-Id", "value": "{{adminUserId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/records/{{createdRecordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "records", "{{createdRecordId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Dashboard",
+      "item": [
+        {
+          "name": "Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-User-Id", "value": "{{analystUserId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/summary?from=2026-01-01&to=2026-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "summary"],
+              "query": [
+                { "key": "from", "value": "2026-01-01" },
+                { "key": "to", "value": "2026-12-31" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Has summary fields', function () {",
+                  "  pm.expect(json).to.have.property('totalIncome');",
+                  "  pm.expect(json).to.have.property('totalExpense');",
+                  "  pm.expect(json).to.have.property('netBalance');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Category Totals",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-User-Id", "value": "{{analystUserId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/category-totals?from=2026-01-01&to=2026-12-31&type=EXPENSE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "category-totals"],
+              "query": [
+                { "key": "from", "value": "2026-01-01" },
+                { "key": "to", "value": "2026-12-31" },
+                { "key": "type", "value": "EXPENSE" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trends",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-User-Id", "value": "{{analystUserId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/trends?from=2026-01-01&to=2026-12-31&bucket=MONTH",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "trends"],
+              "query": [
+                { "key": "from", "value": "2026-01-01" },
+                { "key": "to", "value": "2026-12-31" },
+                { "key": "bucket", "value": "MONTH" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recent Activity",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-User-Id", "value": "{{analystUserId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/recent-activity?limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "recent-activity"],
+              "query": [
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
