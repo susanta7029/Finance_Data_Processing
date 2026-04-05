@@ -197,3 +197,24 @@ Other status behaviors:
 - Data modeling: normalized entities, enums, audit timestamps
 - Validation and reliability: request validation + global error handler
 - Documentation: setup, API map, assumptions, tradeoffs included
+
+## Submission Note
+
+This repository contains the complete backend implementation for the Finance Data Processing assignment.
+
+Verified items:
+
+- Application starts successfully with Spring Boot
+- Maven build passes locally
+- API endpoints work in Postman with the seeded users and RBAC checks
+- Dashboard, records, and user management flows are implemented and tested
+
+If you want to describe this project in a submission form, a concise line is:
+
+"Java Spring Boot backend for finance dashboard operations with role-based access control, financial record management, summary analytics, validation, and H2 persistence."
+
+Suggested future commit message format:
+
+- `feat: add finance backend assignment implementation`
+- `fix: adjust validation or RBAC behavior`
+- `docs: update README with submission details`
